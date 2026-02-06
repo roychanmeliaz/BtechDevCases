@@ -2,7 +2,8 @@
 
 Build a small application in **TypeScript/Go/C#** that supports user **registration** and **login** using **JWT**.
 You can choose any stack or structure you want.
-As long as the core auth flow works end-to-end, it’s accepted.
+As long as the core flow works end-to-end, it’s accepted.
+Please note User will be using the app in place with very bad connections, like jungle or caves.
 
 ---
 
@@ -17,7 +18,6 @@ As long as the core auth flow works end-to-end, it’s accepted.
 - Input: `email`, `password`
 - Return: **JWT**
 - Token should contain at least:
-
   - `email`
   - `user id` or similar identifier
 
@@ -33,12 +33,16 @@ user should be logged out after 15 minutes of inacitvity
 
 ---
 
+### 4. Manager wallet
+
+User should be able to see and transfer his money to other user.
+fields are: recipient, amount, and notes
+
 ## What to deliver
 
 - Fork this repository and then send the link
 - A runnable project (any structure).
 - README explaining:
-
   - How to build and run it (prepare docker compose)
   - Required environment variables
 
@@ -49,6 +53,7 @@ user should be logged out after 15 minutes of inacitvity
 - Registration works with validation.
 - Login returns a usable JWT.
 - A protected route or screen shows the welcome message using JWT auth.
+- User able to transfer funds
 
 ---
 
