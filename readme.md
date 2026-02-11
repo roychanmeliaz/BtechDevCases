@@ -68,165 +68,100 @@ This keeps the scope tight: just registration, login, and a protected "Hello [em
 
 ---
 
-# Implementation Documentation
+---
 
-# Auth & Wallet Management System
+# My Implementation
 
-A robust authentication and wallet management system built with Go, featuring JWT-based authentication, session management, and money transfer capabilities. Designed to handle poor network conditions with idempotency support.
+I am using **Go** with the Gin framework. Go performance will be a good fit for the requirements, including to facilitae the poor network conditions mentioned above.
 
-## Features
+## What I Built
 
-- **User Authentication**
-  - Registration with email validation
-  - Login with JWT token generation
-  - Password hashing with bcrypt
-  
-- **Session Management**
-  - Redis-based session tracking
-  - Automatic logout after 15 minutes of inactivity
-  - Activity-based session renewal
+### Core Features
+- User registration with email/password validation
+- Login that returns a JWT token (with user_id and email in claims)
+- Protected `/api/me` endpoint that shows "Hello [email], welcome back"
+- 15-minute inactivity timeout using Redis sessions
+- Wallet system where users can view balance and transfer money
+- Full transaction history
 
-- **Wallet System**
-  - Automatic wallet creation on registration
-  - Initial balance of 1000 units
-  - View balance and transaction history
-  - Transfer money to other users
-  - Idempotent transfers for network reliability
-
-- **Security**
-  - JWT-based authentication
-  - Password strength validation (minimum 8 characters)
-  - Secure password storage with bcrypt
-  - SQL injection prevention via parameterized queries
+### Extra Touches
+I added a few things beyond the requirements:
+- **Idempotent transfers**: Since users might be in areas with bad connections, I implemented idempotency keys to prevent duplicate transactions on retry
+- **Docker setup**: Everything runs with a single `docker-compose up` command
+- **Unit tests**: Added tests for the core business logic (78.6% coverage on services)
+- **Double-entry bookkeeping**: Proper transaction recording with debit/credit entries
+- **Initial wallet balance**: New users start with 1000 units to test transfers right away
 
 ## Tech Stack
 
-- **Language**: Go 1.21+
-- **Web Framework**: Gin
-- **Database**: PostgreSQL 15
-- **Cache**: Redis 7
-- **ORM**: GORM
-- **Authentication**: JWT (golang-jwt/jwt)
+I chose this stack:
+- **Go** with Gin framework
+- **PostgreSQL** for data persistence
+- **Redis** for session management
+- **GORM** as the ORM
+- **JWT** for authentication
+
+## How to Run
+
+### Docker
+Just run this:
+```bash
+docker-compose up --build
+```
+
+Open `http://localhost:8080/health` to verify it's running.
+
+### Manual Setup
+Running without Docker:
+
+1. Make sure you have Go 1.23+, PostgreSQL, and Redis installed
+2. Start PostgreSQL and Redis (or use the Docker commands below)
+3. Run `go mod download` to install dependencies
+4. Run `go run cmd/server/main.go`
 
 ## Project Structure
 
 ```
-.
-├── cmd/
-│   └── server/          # Application entry point
-├── internal/
-│   ├── api/
-│   │   ├── handlers/    # HTTP request handlers
-│   │   ├── middleware/  # Authentication middleware
-│   │   └── router.go    # Route definitions
-│   ├── config/          # Configuration management
-│   ├── models/          # Database models
-│   ├── repository/      # Database operations
-│   └── service/         # Business logic
-├── pkg/
-│   └── jwt/             # JWT utilities
-├── docker-compose.yml   # Docker services configuration
-├── Dockerfile           # Application container
-└── README.md
+cmd/server/        → Main application
+internal/
+  ├── api/         → HTTP handlers, middleware, router
+  ├── config/      → Environment config
+  ├── models/      → Database models
+  ├── repository/  → Data access layer
+  └── service/     → Business logic
+pkg/jwt/           → Reusable JWT utilities
 ```
 
-## Prerequisites
+## Configuration
 
-- Docker and Docker Compose
-- OR: Go 1.21+, PostgreSQL 15, Redis 7
+There's a `.env.example` file to copy. No need to setup if using Docker Compose.
 
-## Quick Start with Docker
+Key settings:
+- `JWT_SECRET` - Change in production
+- `SESSION_TIMEOUT_MINUTES` - Set to 15 as required
+- Database and Redis connection settings
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd BtechDevCases
-   ```
+Check `.env.example` for the full list.
 
-2. **Start all services**
-   ```bash
-   docker-compose up --build
-   ```
+## API Endpoints
 
-3. **Access the application**
-   - API: http://localhost:8080
-   - Health check: http://localhost:8080/health
+All endpoints are under `/api`. Here's what I implemented:
 
-## Manual Setup (Without Docker)
+### 1. Register a User
+`POST /api/auth/register`
 
-1. **Install dependencies**
-   ```bash
-   go mod download
-   ```
+Creates a new user and automatically creates a wallet with 1000 units.
 
-2. **Start PostgreSQL and Redis**
-   ```bash
-   # PostgreSQL
-   docker run -d --name postgres -p 5432:5432 \
-     -e POSTGRES_USER=postgres \
-     -e POSTGRES_PASSWORD=postgres \
-     -e POSTGRES_DB=authwallet \
-     postgres:15-alpine
-
-   # Redis
-   docker run -d --name redis -p 6379:6379 redis:7-alpine
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Run the application**
-   ```bash
-   go run cmd/server/main.go
-   ```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_HOST` | Server host address | 0.0.0.0 |
-| `SERVER_PORT` | Server port | 8080 |
-| `DB_HOST` | PostgreSQL host | localhost |
-| `DB_PORT` | PostgreSQL port | 5432 |
-| `DB_USER` | Database user | postgres |
-| `DB_PASSWORD` | Database password | postgres |
-| `DB_NAME` | Database name | authwallet |
-| `DB_SSLMODE` | SSL mode | disable |
-| `REDIS_HOST` | Redis host | localhost |
-| `REDIS_PORT` | Redis port | 6379 |
-| `REDIS_PASSWORD` | Redis password | "" |
-| `REDIS_DB` | Redis database number | 0 |
-| `JWT_SECRET` | JWT signing secret | (required in production) |
-| `JWT_ACCESS_EXPIRATION_HOURS` | Token expiration | 24 |
-| `SESSION_TIMEOUT_MINUTES` | Inactivity timeout | 15 |
-
-## API Documentation
-
-### Base URL
-```
-http://localhost:8080/api
-```
-
-### Endpoints
-
-#### 1. Register
-Create a new user account.
-
-**Endpoint:** `POST /api/auth/register`
-
-**Request Body:**
+**Request:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securePassword123",
-  "confirmPassword": "securePassword123"
+  "password": "password123",
+  "confirmPassword": "password123"
 }
 ```
 
-**Response:** `201 Created`
+**Success Response (201):**
 ```json
 {
   "message": "registration successful",
@@ -238,28 +173,26 @@ Create a new user account.
 ```
 
 **Error Responses:**
-- `400` - Validation error (password mismatch, weak password)
+- `400` - Password mismatch or weak password
 - `409` - Email already exists
 
----
+### 2. Login
+`POST /api/auth/login`
 
-#### 2. Login
-Authenticate and receive JWT token.
+Returns a JWT token that you'll use for authenticated requests.
 
-**Endpoint:** `POST /api/auth/login`
-
-**Request Body:**
+**Request:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securePassword123"
+  "password": "password123"
 }
 ```
 
-**Response:** `200 OK`
+**Success Response (200):**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3MDk5MjgwMDAsIm5iZiI6MTcwOTg0MTYwMCwiaWF0IjoxNzA5ODQxNjAwfQ.xyz123",
   "user": {
     "id": 1,
     "email": "user@example.com"
@@ -269,21 +202,19 @@ Authenticate and receive JWT token.
 
 **Error Responses:**
 - `400` - Invalid request format
-- `401` - Invalid credentials
+- `401` - Invalid email or password
 
----
+### 3. Get Current User (Protected)
+`GET /api/me`
 
-#### 3. Get Current User (Protected)
-Get current user information.
+Returns the "Hello [email], welcome back" message. Requires JWT token in Authorization header.
 
-**Endpoint:** `GET /api/me`
-
-**Headers:**
+**Request Headers:**
 ```
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <your-jwt-token>
 ```
 
-**Response:** `200 OK`
+**Success Response (200):**
 ```json
 {
   "message": "Hello user@example.com, welcome back",
@@ -292,39 +223,39 @@ Authorization: Bearer <jwt-token>
 ```
 
 **Error Responses:**
-- `401` - Unauthorized (invalid/expired token or session)
+- `401` - Missing or invalid token
+- `401` - Session expired (15 minutes of inactivity)
 
----
+### 4. View Wallet
+`GET /api/wallet`
 
-#### 4. Get Wallet (Protected)
-View wallet balance and transaction history.
+Shows your balance and transaction history.
 
-**Endpoint:** `GET /api/wallet`
-
-**Headers:**
+**Request Headers:**
 ```
-Authorization: Bearer <jwt-token>
+Authorization: Bearer <your-jwt-token>
 ```
 
-**Response:** `200 OK`
+**Success Response (200):**
 ```json
 {
   "wallet": {
     "id": 1,
     "user_id": 1,
-    "balance": 1000.0,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "balance": 849.5,
+    "created_at": "2026-02-11T14:22:27.873616Z",
+    "updated_at": "2026-02-11T14:23:52.262112Z"
   },
   "transactions": [
     {
       "id": 1,
       "wallet_id": 1,
-      "amount": 100.0,
+      "amount": 150.5,
       "type": "debit",
       "related_user_id": 2,
-      "notes": "Payment for services",
-      "created_at": "2024-01-01T00:00:00Z"
+      "notes": "Payment for coffee",
+      "created_at": "2026-02-11T14:23:52.26349Z",
+      "updated_at": "2026-02-11T14:23:52.26349Z"
     }
   ]
 }
@@ -334,29 +265,27 @@ Authorization: Bearer <jwt-token>
 - `401` - Unauthorized
 - `500` - Internal server error
 
----
+### 5. Transfer Money
+`POST /api/wallet/transfer`
 
-#### 5. Transfer Money (Protected)
-Transfer money to another user.
+Use the `Idempotency-Key` header to prevent duplicate transfers on network retries.
 
-**Endpoint:** `POST /api/wallet/transfer`
-
-**Headers:**
+**Request Headers:**
 ```
-Authorization: Bearer <jwt-token>
-Idempotency-Key: <unique-key> (optional, recommended for poor networks)
+Authorization: Bearer <your-jwt-token>
+Idempotency-Key: unique-request-id-123  (optional but recommended)
 ```
 
 **Request Body:**
 ```json
 {
-  "recipient": "recipient@example.com",
-  "amount": 100.0,
-  "notes": "Payment for services"
+  "recipient": "bob@example.com",
+  "amount": 150.50,
+  "notes": "Coffee payment"
 }
 ```
 
-**Response:** `200 OK`
+**Success Response (200):**
 ```json
 {
   "message": "transfer successful"
@@ -364,136 +293,80 @@ Idempotency-Key: <unique-key> (optional, recommended for poor networks)
 ```
 
 **Error Responses:**
-- `400` - Insufficient balance, invalid amount, or self-transfer
+- `400` - Insufficient balance
+- `400` - Invalid amount (must be greater than 0)
+- `400` - Cannot transfer to yourself
 - `401` - Unauthorized
 - `404` - Recipient not found
-- `500` - Internal server error
 
----
+## Quick Test
 
-## Usage Examples
-
-### Registration and Login Flow
+Here's the quick flow:
 
 ```bash
-# 1. Register a new user
+# 1. Register
 curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "password123",
-    "confirmPassword": "password123"
-  }'
+  -d '{"email":"test@example.com","password":"password123","confirmPassword":"password123"}'
 
-# 2. Login
-TOKEN=$(curl -X POST http://localhost:8080/api/auth/login \
+# 2. Login and save token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "password123"
-  }' | jq -r '.token')
+  -d '{"email":"test@example.com","password":"password123"}' | jq -r '.token')
 
-# 3. Access protected endpoint
+# 3. Access protected route
 curl http://localhost:8080/api/me \
   -H "Authorization: Bearer $TOKEN"
-```
+# Should return: "Hello test@example.com, welcome back"
 
-### Wallet Operations
-
-```bash
-# View wallet
+# 4. Check wallet
 curl http://localhost:8080/api/wallet \
   -H "Authorization: Bearer $TOKEN"
-
-# Transfer money (with idempotency key for poor network resilience)
-curl -X POST http://localhost:8080/api/wallet/transfer \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "recipient": "bob@example.com",
-    "amount": 50.0,
-    "notes": "Payment for coffee"
-  }'
 ```
 
-## Network Resilience
+## Testing
 
-This application is designed to handle poor network conditions (e.g., jungle or caves):
-
-1. **Idempotency Keys**: Use the `Idempotency-Key` header for transfer requests to prevent duplicate transactions due to network retries.
-
-2. **Atomic Transactions**: All database operations use transactions to ensure data consistency.
-
-3. **Session Management**: Redis-based sessions with automatic timeout handling.
-
-4. **Connection Pooling**: Efficient database connection management via GORM.
-
-## Development
-
-### Running Tests
-The project includes comprehensive unit tests for the service layer and JWT utilities.
+I wrote unit tests for the core business logic:
 
 ```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test ./... -cover
-
-# Run tests with verbose output
-go test -v ./...
-
-# Run specific package tests
-go test ./internal/service/...
-go test ./pkg/jwt/...
+go test ./...              # Run all tests
+go test ./... -cover       # With coverage
 ```
 
-**Test Coverage:**
-- Service Layer: 78.6% coverage
-- JWT Utilities: 88.9% coverage
+Coverage:
+- Service layer: **78.6%**
+- JWT utilities: **88.9%**
 
-**Tested Components:**
-- User registration with validation
-- User login and JWT generation
-- Password hashing and verification
-- Wallet creation and balance management
-- Money transfers with double-entry bookkeeping
-- Transfer idempotency
-- Error handling (insufficient balance, invalid recipient, etc.)
-- JWT token generation and validation
-- Token expiration handling
+Tests cover:
+- Registration/login flows
+- Wallet operations and transfers
+- Idempotency checks
+- Error handling
+- JWT validation
 
-### Building the Application
-```bash
-go build -o server ./cmd/server
-```
+## Design Decisions
 
-### Database Migrations
-The application uses GORM AutoMigrate for database schema management. Tables are automatically created/updated on startup.
+### Why Idempotency?
+The brief mentioned users in caves/jungles with bad connections. Idempotency keys ensure that if a user's request times out and they retry, we won't process the transfer twice.
 
-## Stopping the Application
+### Why Redis for Sessions?
+I needed to track the 15-minute inactivity timeout. Redis is perfect for this - it has built-in TTL (time-to-live) and we can reset it on each request.
 
-### Docker
-```bash
-docker-compose down
-```
+### Why GORM?
+It handles migrations automatically and provides a clean API. Tables are created on startup, so you don't need to run migrations manually.
 
-### Manual
-Press `Ctrl+C` to stop the application.
+## To Add
 
-## Security Considerations
+- Rate limiting (especially for login attempts)
+- Email verification
+- More comprehensive integration tests
+- Prometheus metrics
+- Better logging (structured logs with correlation IDs)
+- Admin endpoints for user management
 
-1. **Change JWT Secret**: Always set a strong `JWT_SECRET` in production.
-2. **Use HTTPS**: Enable TLS/SSL in production environments.
-3. **Database Security**: Use strong passwords and restrict database access.
-4. **Redis Security**: Enable authentication for Redis in production.
-5. **Rate Limiting**: Consider adding rate limiting for API endpoints.
+## Notes
 
-## License
-
-MIT License
-
-## Support
-
-For issues or questions, please open an issue in the repository.
+- The initial wallet balance (1000) is just for testing convenience
+- JWT secret has a default value for dev
+- Database schema auto-migrates on startup
+- Sessions expire after 15 minutes of inactivity as required
