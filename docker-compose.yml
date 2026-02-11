@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: authwallet-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authwallet
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - authwallet-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: authwallet-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - authwallet-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: authwallet-app
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: authwallet
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      JWT_SECRET: "your-super-secret-jwt-key-change-in-production"
+      JWT_ACCESS_EXPIRATION_HOURS: 24
+      SESSION_TIMEOUT_MINUTES: 15
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - authwallet-network
+
+volumes:
+  postgres_data:
+
+networks:
+  authwallet-network:
+    driver: bridge
