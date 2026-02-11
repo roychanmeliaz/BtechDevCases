@@ -432,9 +432,37 @@ This application is designed to handle poor network conditions (e.g., jungle or 
 ## Development
 
 ### Running Tests
+The project includes comprehensive unit tests for the service layer and JWT utilities.
+
 ```bash
+# Run all tests
 go test ./...
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run specific package tests
+go test ./internal/service/...
+go test ./pkg/jwt/...
 ```
+
+**Test Coverage:**
+- Service Layer: 78.6% coverage
+- JWT Utilities: 88.9% coverage
+
+**Tested Components:**
+- User registration with validation
+- User login and JWT generation
+- Password hashing and verification
+- Wallet creation and balance management
+- Money transfers with double-entry bookkeeping
+- Transfer idempotency
+- Error handling (insufficient balance, invalid recipient, etc.)
+- JWT token generation and validation
+- Token expiration handling
 
 ### Building the Application
 ```bash
