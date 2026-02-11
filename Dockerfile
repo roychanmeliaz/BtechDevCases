@@ -1,7 +1,10 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
+
+# Set GOTOOLCHAIN to auto to allow automatic Go version management
+ENV GOTOOLCHAIN=auto
 
 # Copy go mod files
 COPY go.mod go.sum ./
